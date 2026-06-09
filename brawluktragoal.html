@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Чемпионат мира по броуболу — полоса прогресса</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', 'Montserrat', 'Rubik', sans-serif;
+            font-weight: 900;
+            background: #0a5a00;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            overflow: hidden;
+        }
+
+        /* ===== ЭКРАН ЗАГРУЗКИ ===== */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at 50% 40%, #b3ff66 0%, #3dd100 50%, #0a6e00 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-text {
+            font-family: 'Inter', 'Montserrat', 'Rubik', sans-serif;
+            font-weight: 900;
+            font-size: 24px;
+            color: #fff;
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+            text-align: center;
+        }
+
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+            100% { content: ''; }
+        }
+
+        .game-screen {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 1024px;
+            max-height: 100vh;
+            min-width: 320px;
+            min-height: 180px;
+            background: radial-gradient(circle at 50% 40%, #b3ff66 0%, #3dd100 50%, #0a6e00 100%);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .game-screen.loaded {
+            opacity: 1;
+        }
+
+        /* ===== ФОНОВЫЙ ПАТТЕРН (мячики) ===== */
+        .background-pattern {
+            position: absolute;
+            top: -20vw;
+            left: -20vw;
+            width: 140vw;
+            height: 140vh;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .mango-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 7vw;
+            width: 100%;
+            height: 100%;
+            animation: scrollPattern 22s linear infinite;
+        }
+
+        .mango-row {
+            display: flex;
+            gap: 10vw;
+            justify-content: center;
+        }
+
+        .mango-row:nth-child(even) {
+            transform: translateX(5vw);
+        }
+
+        .mango-unit {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .icon-mango {
+            width: 6vw;
+            height: 6vw;
+            background-image: url('https://s.fotora.ru/724b63d892dd4185.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.35;
+            transform: scaleX(-1) rotate(-5deg);
+        }
+
+        @keyframes scrollPattern {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-14vw); }
+        }
+
+        /* ===== КОНТЕНТ ПОВЕРХ ФОНА ===== */
+        .content-area {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 18px;
+            padding: 15px 0 20px 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .celebration-text {
+            text-align: center;
+            width: 100%;
+            flex-shrink: 0;
+            padding: 0 16px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+        }
+
+        .emoji-gif {
+            width: 58px;
+            height: 58px;
+            background-image: url('https://s.fotora.ru/eced09c195188e84.gif');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            flex-shrink: 0;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .text-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 0 1 auto;
+        }
+
+        .celebration-text .big-text {
+            font-size: 27.2px;
+            font-weight: 900;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 6px rgba(0,0,0,0.4);
+            letter-spacing: 1px;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .celebration-text .small-text {
+            font-size: 13.6px;
+            font-weight: 800;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        /* ===== REWARDS ===== */
+        .rewards-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            flex-shrink: 0;
+            margin: 5px 0;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            position: relative;
+        }
+        .rewards-wrapper::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
+        .rewards-container {
+            display: flex;
+            gap: 12px;
+            padding: 8px 25px;
+            min-width: min-content;
+            position: relative;
+        }
+
+        /* ===== ПОЛОСА ПРОГРЕССА ===== */
+        .progress-track-bar {
+            position: absolute;
+            bottom: 6px;
+            left: 0;
+            right: 0;
+            height: 20px;
+            z-index: 5;
+            pointer-events: none;
+            border-radius: 12px;
+            overflow: visible;
+            border: 2px solid #000;
+            background: #4a0020;
+            clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+        }
+
+        .progress-track-fill {
+            height: 100%;
+            background: #f28c28;
+            border-radius: 12px;
+            transition: width 0.3s ease;
+            width: 0%;
+            border-right: 1px solid #fff;
+            clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+        }
+
+        .reward-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            width: 85px;
+            flex-shrink: 0;
+            z-index: 6;
+        }
+
+        .reward-bg {
+            width: 85px;
+            height: 85px;
+            background-image: url('https://i.ibb.co/0y5fPmfn/IMG-7679.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .item-content {
+            width: 85%;
+            height: 85%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* ===== ИКОНКИ ===== */
+        .bigbox-icon {
+            width: 70px;
+            height: 70px;
+            background-image: url('https://s.fotora.ru/8096b11a7f1d51f6.gif');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .megabox-icon {
+            width: 180px;
+            height: 180px;
+            background-image: url('https://s.fotora.ru/aeb2fea06bb15a14.gif');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .coin-icon {
+            width: 48px;
+            height: 48px;
+            background-image: url('https://i.ibb.co/Qv3vyVnV/IMG-0489.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .crystal-icon {
+            width: 48px;
+            height: 48px;
+            background-image: url('https://s.fotora.ru/6e0d423734826ff1.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .skin-icon-1 {
+            width: 80px;
+            height: 80px;
+            background-image: url('https://s.fotora.ru/298750440a376930.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .skin-icon-2 {
+            width: 80px;
+            height: 80px;
+            background-image: url('https://s.fotora.ru/c73f55b52a3035c4.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .reward-label {
+            margin-top: 8px;
+            font-size: 14px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            white-space: nowrap;
+            background: none;
+            padding: 0;
+            border-radius: 0;
+            position: relative;
+            z-index: 7;
+        }
+
+        /* ===== НИЖНИЙ ТРЕКЕР (30/300) ===== */
+        .progress-block {
+            width: 84%;
+            max-width: 600px;
+            margin-top: 5px;
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+            margin-bottom: 8px;
+        }
+
+        .progress-text {
+            font-size: 20px;
+            font-weight: 900;
+            color: #ffe074;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            background: none;
+            padding: 0;
+            letter-spacing: 1px;
+        }
+
+        /* ===== БЛОК 1: ПОДРОБНОСТИ ===== */
+        .details-section {
+            width: 92%;
+            max-width: 800px;
+            margin-top: 70px;
+            padding: 25px 35px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 35px;
+            flex-shrink: 0;
+            border-radius: 16px;
+        }
+
+        .details-gif {
+            width: 180px;
+            height: 180px;
+            background-image: url('https://s.fotora.ru/8400652762d6b336.gif');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            flex-shrink: 0;
+            border-radius: 12px;
+        }
+
+        .details-text {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .details-title {
+            font-size: 26px;
+            font-weight: 900;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+            line-height: 1.2;
+        }
+
+        .details-desc {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            line-height: 1.5;
+        }
+
+        .details-desc span {
+            color: #ffe074;
+        }
+
+        /* ===== БЛОК 2: АКЦИИ И КВЕСТЫ ===== */
+        .promo-section {
+            width: 92%;
+            max-width: 800px;
+            margin-top: 30px;
+            padding: 25px 35px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 35px;
+            flex-shrink: 0;
+            border-radius: 16px;
+        }
+
+        .promo-gif {
+            width: 180px;
+            height: 180px;
+            background-image: url('https://s.fotora.ru/c58478d7a8247b94.gif');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            flex-shrink: 0;
+            border-radius: 12px;
+            order: 2;
+        }
+
+        .promo-text {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+            order: 1;
+        }
+
+        .promo-title {
+            font-size: 26px;
+            font-weight: 900;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+            line-height: 1.2;
+        }
+
+        .promo-desc {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            line-height: 1.5;
+        }
+
+        .promo-desc span {
+            color: #ffe074;
+        }
+
+        /* ===== БЛОК 3: ДИЗАЙН СОБЫТИЯ ===== */
+        .footer-section {
+            width: 92%;
+            max-width: 800px;
+            margin-top: 30px;
+            margin-bottom: 30px;
+            padding: 20px 30px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            border-radius: 16px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .footer-text {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+
+        .footer-text span {
+            color: #ffe074;
+        }
+
+        /* ===== КНОПКА «ПОДРОБНЕЕ» — С ЧЁРНОЙ ОБВОДКОЙ (ИСПРАВЛЕНО) ===== */
+        .btn-link {
+            display: inline-block;
+            padding: 10px 28px;
+            background: #2b7fff;
+            border: 2px solid #000;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 900;
+            text-transform: uppercase;
+            text-decoration: none;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            box-shadow: none;
+            transition: transform 0.1s ease;
+            font-family: 'Inter', 'Montserrat', 'Rubik', sans-serif;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            /* Исправлено: обводка теперь видна полностью */
+            clip-path: none;
+            border-radius: 6px;
+            /* Скосы имитируем через псевдоэлемент или просто оставляем прямоугольную */
+        }
+
+        .btn-link:active {
+            transform: scale(0.95);
+        }
+
+        .btn-link:hover {
+            background: #3a8fff;
+        }
+
+        /* ===== АДАПТАЦИЯ ===== */
+        @media (max-width: 768px) {
+            .icon-mango {
+                width: 10vw;
+                height: 10vw;
+                opacity: 0.3;
+            }
+            .mango-grid {
+                gap: 12vw;
+            }
+            .mango-row {
+                gap: 14vw;
+            }
+            @keyframes scrollPattern {
+                100% { transform: translateY(-24vw); }
+            }
+            .reward-item { width: 12vw; }
+            .reward-bg { width: 12vw; height: 12vw; }
+            .reward-label { font-size: 2.2vw; margin-top: 1vw; }
+            .celebration-text .big-text { font-size: 3.8vw; }
+            .celebration-text .small-text { font-size: 2.4vw; }
+            .emoji-gif { width: 8vw; height: 8vw; }
+            .bigbox-icon { width: 10vw; height: 10vw; }
+            .megabox-icon { width: 26vw; height: 26vw; }
+            .coin-icon { width: 6vw; height: 6vw; }
+            .crystal-icon { width: 6vw; height: 6vw; }
+            .skin-icon-1, .skin-icon-2 { width: 11vw; height: 11vw; }
+            .progress-text { font-size: 3.2vw; }
+            .content-area { gap: 12px; padding: 10px 0 15px 0; }
+            .rewards-container { gap: 8px; padding: 8px 18px; }
+            .progress-track-bar {
+                bottom: 4px;
+                height: 14px;
+                border-width: 1.5px;
+                clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+            }
+            .progress-track-fill {
+                clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+            }
+            .details-section, .promo-section, .footer-section {
+                flex-direction: column;
+                padding: 20px 16px;
+                gap: 20px;
+                margin-top: 25px;
+            }
+            .details-gif, .promo-gif {
+                width: 40vw;
+                height: 40vw;
+            }
+            .details-title, .promo-title {
+                font-size: 5vw;
+            }
+            .details-desc, .promo-desc {
+                font-size: 2.8vw;
+            }
+            .promo-gif {
+                order: 0;
+            }
+            .promo-text {
+                order: 0;
+            }
+            .footer-section {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            .footer-text {
+                font-size: 3vw;
+            }
+            .btn-link {
+                font-size: 4vw;
+                padding: 8px 20px;
+                clip-path: none;
+                border-radius: 4px;
+            }
+            .details-section {
+                margin-top: 50px;
+            }
+        }
+
+        @media (max-width: 550px) {
+            .reward-item { width: 14vw; }
+            .reward-bg { width: 14vw; height: 14vw; }
+            .celebration-text .big-text { font-size: 4.2vw; }
+            .celebration-text .small-text { font-size: 2.8vw; }
+            .emoji-gif { width: 9vw; height: 9vw; }
+            .bigbox-icon { width: 12vw; height: 12vw; }
+            .megabox-icon { width: 28vw; height: 28vw; }
+            .coin-icon { width: 7vw; height: 7vw; }
+            .crystal-icon { width: 7vw; height: 7vw; }
+            .skin-icon-1, .skin-icon-2 { width: 12vw; height: 12vw; }
+            .details-gif, .promo-gif {
+                width: 50vw;
+                height: 50vw;
+            }
+            .details-title, .promo-title {
+                font-size: 4.5vw;
+            }
+            .details-desc, .promo-desc {
+                font-size: 2.5vw;
+            }
+            .footer-text {
+                font-size: 3.5vw;
+            }
+            .btn-link {
+                font-size: 4.5vw;
+            }
+            .details-section {
+                margin-top: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ЭКРАН ЗАГРУЗКИ -->
+    <div id="loading-screen">
+        <div class="loading-text">ЗАГРУЗКА<span class="loading-dots"></span></div>
+    </div>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <div class="game-screen" id="gameScreen">
+        <!-- ФОНОВЫЙ ПАТТЕРН (МЯЧИКИ) -->
+        <div class="background-pattern">
+            <div class="mango-grid" id="grid"></div>
+        </div>
+
+        <!-- КОНТЕНТ -->
+        <div class="content-area">
+            <div class="celebration-text">
+                <div class="emoji-gif"></div>
+                <div class="text-wrapper">
+                    <div class="big-text">ЧЕМПИОНАТ МИРА ПО БРОУБОЛУ</div>
+                    <div class="small-text">ЗАБИВАЙТЕ ГОЛЫ И ПОЛУЧАЙТЕ НАГРАДЫ</div>
+                </div>
+            </div>
+
+            <div class="rewards-wrapper" id="rewardsWrapper">
+                <div class="rewards-container" id="rewardsContainer">
+                    <div class="progress-track-bar">
+                        <div class="progress-track-fill" id="trackerLine"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-block">
+                <div class="progress-text" id="progressText">30 / 300</div>
+                <div style="font-size:14px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;margin-top:2px;letter-spacing:0.5px;">ПОДРОБНОСТИ НИЖЕ</div>
+            </div>
+
+            <!-- БЛОК 1: ПОДРОБНОСТИ -->
+            <div class="details-section">
+                <div class="details-gif"></div>
+                <div class="details-text">
+                    <div class="details-title">ЗАБИВАЙ ГОЛЫ В БРОУБОЛЕ И ПОЛУЧАЙ НАГРАДЫ!</div>
+                    <div class="details-desc">
+                        <span>КОНКУРС!</span> ТОП 1 БОМБАРДИР ПОЛУЧИТ 10 МЕГАБОКСОВ, ТОП 2 ПОЛУЧИТ 5 МЕГАБОКСОВ, ТОП 3 ПОЛУЧИТ НЕБОЛЬШУЮ ПОРЦИЮ КРИСТАЛЛОВ.<br>
+                        ЗАБИВАЙ ГОЛЫ В РЕЖИМЕ <span>БРОУБОЛ</span> И ПОДНИМАЙСЯ ПО ШКАЛЕ!
+                    </div>
+                </div>
+            </div>
+
+            <!-- БЛОК 2: АКЦИИ И КВЕСТЫ -->
+            <div class="promo-section">
+                <div class="promo-text">
+                    <div class="promo-title">АКЦИИ И КВЕСТЫ В МАГАЗИНЕ</div>
+                    <div class="promo-desc">
+                        ВО ВРЕМЯ ИВЕНТА В МАГАЗИНЕ БУДУТ ВЫХОДИТЬ <span>АКЦИИ</span>, СВЯЗАННЫЕ С <span>ФУТБОЛОМ</span>.<br>
+                        В ТЕЧЕНИЕ СЕЗОНА БУДЕТ <span>БОЛЬШЕ КВЕСТОВ</span> — НЕ ПРОПУСТИ!
+                    </div>
+                </div>
+                <div class="promo-gif"></div>
+            </div>
+
+            <!-- БЛОК 3: ДИЗАЙН СОБЫТИЯ -->
+            <div class="footer-section">
+                <div class="footer-text">
+                    ДИЗАЙН СОБЫТИЯ РАЗРАБОТАН КОМАНДОЙ ИГРЫ <span>@PINBRAWL</span>
+                </div>
+                <a href="https://t.me/pinbrawl" target="_blank" class="btn-link">ПОДРОБНЕЕ</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Список всех изображений для предзагрузки (только статические, не гифки)
+        const imagesToPreload = [
+            'https://s.fotora.ru/724b63d892dd4185.png',
+            'https://s.fotora.ru/eced09c195188e84.gif',
+            'https://i.ibb.co/0y5fPmfn/IMG-7679.png',
+            'https://s.fotora.ru/6e0d423734826ff1.png',
+            'https://s.fotora.ru/298750440a376930.png',
+            'https://s.fotora.ru/c73f55b52a3035c4.png',
+            'https://i.ibb.co/Qv3vyVnV/IMG-0489.png',
+            'https://s.fotora.ru/8400652762d6b336.gif',
+            'https://s.fotora.ru/c58478d7a8247b94.gif'
+        ];
+
+        // Предзагрузка изображений
+        function preloadImages(urls) {
+            return Promise.all(urls.map(url => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = resolve;
+                    img.onerror = resolve; // В случае ошибки всё равно продолжаем
+                    img.src = url;
+                });
+            }));
+        }
+
+        // Генерация сетки мячиков
+        const grid = document.getElementById('grid');
+        const rowsCount = 28;
+        const itemsCount = 18;
+
+        grid.innerHTML = '';
+        
+        for (let i = 0; i < rowsCount; i++) {
+            const row = document.createElement('div');
+            row.className = 'mango-row';
+            
+            for (let j = 0; j < itemsCount; j++) {
+                const unit = document.createElement('div');
+                unit.className = 'mango-unit';
+                
+                const icon = document.createElement('div');
+                icon.className = 'icon-mango';
+                
+                unit.appendChild(icon);
+                row.appendChild(icon);
+            }
+            grid.appendChild(row);
+        }
+
+        // ===== 10 СТУПЕНЕЙ ПО 30 ГОЛОВ =====
+        const rewardsData = [
+            { type: 'bigbox', label: '30', value: 'БОЛЬШОЙ ЯЩИК' },
+            { type: 'crystal', label: '60', value: '20' },
+            { type: 'bigbox', label: '90', value: 'БОЛЬШОЙ ЯЩИК' },
+            { type: 'coin', label: '120', value: '300' },
+            { type: 'skin1', label: '150', value: 'НОВЫЙ СКИН' },
+            { type: 'bigbox', label: '180', value: 'БОЛЬШОЙ ЯЩИК' },
+            { type: 'crystal', label: '210', value: '10' },
+            { type: 'coin', label: '240', value: '300' },
+            { type: 'megabox', label: '270', value: 'МЕГАБОКС' },
+            { type: 'skin2', label: '300', value: 'НОВЫЙ СКИН' }
+        ];
+
+        let currentGoals = 30;
+        const maxGoals = 300;
+        let currentStep = 1;
+        const totalSteps = 10;
+
+        function updateProgress() {
+            const percent = (currentStep / totalSteps) * 100;
+            document.getElementById('trackerLine').style.width = percent + '%';
+            document.getElementById('progressText').textContent = `${currentGoals} / ${maxGoals}`;
+        }
+
+        function createRewardItem(reward, index) {
+            const item = document.createElement('div');
+            item.className = 'reward-item';
+
+            const bg = document.createElement('div');
+            bg.className = 'reward-bg';
+
+            const content = document.createElement('div');
+            content.className = 'item-content';
+
+            if (reward.type === 'bigbox') {
+                content.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;">
+                        <div class="bigbox-icon"></div>
+                        <div style="font-size:10px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;margin-top:2px;text-align:center;line-height:1.1;">${reward.value}</div>
+                    </div>
+                `;
+            } else if (reward.type === 'coin') {
+                content.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;">
+                        <div class="coin-icon"></div>
+                        <div style="font-size:12px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;margin-top:2px;">${reward.value}</div>
+                    </div>
+                `;
+            } else if (reward.type === 'crystal') {
+                content.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;">
+                        <div class="crystal-icon"></div>
+                        <div style="font-size:12px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;margin-top:2px;">${reward.value}</div>
+                    </div>
+                `;
+            } else if (reward.type === 'skin1') {
+                content.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;">
+                        <div class="skin-icon-1"></div>
+                        <div style="font-size:10px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;margin-top:2px;text-align:center;line-height:1.1;">${reward.value}</div>
+                    </div>
+                `;
+            } else if (reward.type === 'skin2') {
+                content.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;">
+                        <div class="skin-icon-2"></div>
+                        <div style="font-size:10px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;margin-top:2px;text-align:center;line-height:1.1;">${reward.value}</div>
+                    </div>
+                `;
+            } else if (reward.type === 'megabox') {
+                content.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;">
+                        <div class="megabox-icon"></div>
+                        <div style="font-size:10px;font-weight:900;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;margin-top:2px;text-align:center;line-height:1.1;">${reward.value}</div>
+                    </div>
+                `;
+            }
+
+            bg.appendChild(content);
+            item.appendChild(bg);
+
+            const label = document.createElement('div');
+            label.className = 'reward-label';
+            label.textContent = reward.label;
+            item.appendChild(label);
+
+            return item;
+        }
+
+        const container = document.getElementById('rewardsContainer');
+        rewardsData.forEach((reward, idx) => {
+            container.appendChild(createRewardItem(reward, idx));
+        });
+
+        updateProgress();
+
+        // Скролл наградами
+        const wrapper = document.getElementById('rewardsWrapper');
+        let isMouseDown = false;
+        let startMouseX = 0;
+        let startScrollLeft = 0;
+
+        wrapper.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            startMouseX = e.pageX;
+            startScrollLeft = wrapper.scrollLeft;
+            wrapper.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isMouseDown) return;
+            const dx = e.pageX - startMouseX;
+            wrapper.scrollLeft = startScrollLeft - dx;
+            e.preventDefault();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            wrapper.style.cursor = 'grab';
+        });
+
+        wrapper.style.cursor = 'grab';
+
+        // Предзагрузка и запуск
+        preloadImages(imagesToPreload).then(() => {
+            const loadingScreen = document.getElementById('loading-screen');
+            loadingScreen.classList.add('hidden');
+            document.getElementById('gameScreen').classList.add('loaded');
+        });
+    </script>
+</body>
+</html>
